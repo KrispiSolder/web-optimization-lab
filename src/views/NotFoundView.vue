@@ -1,0 +1,1 @@
+<template><section class="empty-state"><h1>Страница не найдена</h1><p>Проверьте адрес или вернитесь на главную.</p><RouterLink class="btn btn-primary" to="/">На главную</RouterLink></section></template>
