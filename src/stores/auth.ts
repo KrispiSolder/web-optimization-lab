@@ -1,59 +1,129 @@
-import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
+import { defineStore } from 'pinia'
 import type { User } from '@supabase/supabase-js'
-import { supabase } from '../lib/supabase'
-export type Role = 'student' | 'teacher' | 'admin'
-export interface Profile { id: string; full_name: string; role: Role }
+import type { Profile, Role } from '@/types/models'
+import { isSupabaseConfigured, supabase } from '@/lib/supabase'
+
+const DEMO_ROLE_KEY = 'wol.demoRole'
+
+function readDemoRole(): Role {
+  const stored = localStorage.getItem(DEMO_ROLE_KEY)
+  return stored === 'teacher' || stored === 'admin' ? stored : 'student'
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const profile = ref<Profile | null>(null)
-  const initialized = ref(false)
-  let bootPromise: Promise<void> | null = null
-  const isLoggedIn = computed(() => !!user.value)
-  const isStaff = computed(() => profile.value?.role === 'teacher' || profile.value?.role === 'admin')
+  const loading = ref(true)
+  const error = ref<string | null>(null)
+  /** Демо-режим включается автоматически, если Supabase не сконфигурирован. */
+  const isDemo = ref(!isSupabaseConfigured)
+  const demoRole = ref<Role>(readDemoRole())
+
+  let initialized = false
+
+  const role = computed<Role | null>(() =>
+    isDemo.value ? demoRole.value : (profile.value?.role ?? null),
+  )
+
+  const isAuthenticated = computed(() => isDemo.value || user.value !== null)
+
+  const displayName = computed(() => {
+    if (isDemo.value) {
+      return demoRole.value === 'student'
+        ? 'Демо-студент'
+        : demoRole.value === 'teacher'
+          ? 'Демо-преподаватель'
+          : 'Демо-администратор'
+    }
+    return profile.value?.display_name ?? user.value?.email ?? 'Пользователь'
+  })
+
   async function loadProfile() {
-    if (!supabase || !user.value) { profile.value = null; return }
-    const { data, error } = await supabase.from('profiles').select('id,full_name,role').eq('id', user.value.id).single()
-    if (error) { console.warn('Не удалось загрузить профиль:', error.message); profile.value = null; return }
-    profile.value = data as Profile
+    if (!supabase || !user.value) {
+      profile.value = null
+      return
+    }
+    const { data, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, display_name, role, status')
+      .eq('id', user.value.id)
+      .maybeSingle<Profile>()
+
+    if (profileError) {
+      error.value = profileError.message
+      profile.value = null
+      return
+    }
+    profile.value = data
   }
-  async function bootstrap() {
-    if (bootPromise) return bootPromise
-    bootPromise = (async () => {
-      try {
-        if (supabase) {
-          const { data } = await supabase.auth.getUser()
-          user.value = data.user
-          await loadProfile()
-          supabase.auth.onAuthStateChange((_event, session) => {
-            // Avoid awaited Supabase queries inside the auth callback.
-            user.value = session?.user ?? null
-            if (!session?.user) profile.value = null
-            else setTimeout(() => { void loadProfile() }, 0)
-          })
-        }
-      } finally { initialized.value = true }
-    })()
-    return bootPromise
+
+  async function init() {
+    if (initialized) return
+    initialized = true
+
+    if (!supabase) {
+      loading.value = false
+      return
+    }
+
+    try {
+      const { data } = await supabase.auth.getSession()
+      user.value = data.session?.user ?? null
+      await loadProfile()
+
+      supabase.auth.onAuthStateChange((_event, session) => {
+        user.value = session?.user ?? null
+        void loadProfile()
+      })
+    } catch (cause) {
+      error.value = cause instanceof Error ? cause.message : 'Не удалось инициализировать Auth'
+    } finally {
+      loading.value = false
+    }
   }
+
   async function signIn(email: string, password: string) {
-    if (!supabase) throw new Error('Supabase ещё не настроен')
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
-    const { data } = await supabase.auth.getUser()
-    user.value = data.user
-    await loadProfile()
+    if (!supabase) {
+      error.value = 'Supabase не настроен: доступен только демо-режим.'
+      return false
+    }
+    error.value = null
+    loading.value = true
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    loading.value = false
+    if (signInError) {
+      error.value = signInError.message
+      return false
+    }
+    return true
   }
-  async function signUp(email: string, password: string, fullName: string) {
-    if (!supabase) throw new Error('Supabase ещё не настроен')
-    const { error } = await supabase.auth.signUp({ email, password, options: { data: { full_name: fullName } } })
-    if (error) throw error
-  }
+
   async function signOut() {
     if (!supabase) return
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
-    user.value = null; profile.value = null
+    await supabase.auth.signOut()
+    user.value = null
+    profile.value = null
   }
-  return { user, profile, initialized, isLoggedIn, isStaff, bootstrap, signIn, signUp, signOut, loadProfile }
+
+  function setDemoRole(next: Role) {
+    demoRole.value = next
+    localStorage.setItem(DEMO_ROLE_KEY, next)
+  }
+
+  return {
+    user,
+    profile,
+    loading,
+    error,
+    isDemo,
+    demoRole,
+    role,
+    displayName,
+    isAuthenticated,
+    init,
+    signIn,
+    signOut,
+    setDemoRole,
+  }
 })

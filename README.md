@@ -1,73 +1,118 @@
-# Web Optimization Lab — Этап 1
+# Web Optimization Lab
 
-Первый рабочий этап образовательной платформы для МДК.09.02: Vue 3 + Vite + TypeScript + Pinia + Supabase Auth. Лаборатории и управление заданиями появятся на следующих этапах.
+Образовательная платформа оптимизации веб-приложений (ТЗ A297, версия 1.0).
+ПМ.09, МДК.09.02 «Оптимизация веб-приложений», специальность 09.02.07.
 
-## 1. Запуск локально
+## Стек
 
-Требуется Node.js 22+. Зависимости устанавливаются локально; архив не включает `node_modules`.
+| Слой | Технология |
+| --- | --- |
+| Frontend | Vue 3 + TypeScript, Vite 5 |
+| Роутинг | Vue Router 4 (hash history для GitHub Pages) |
+| Состояние | Pinia 4 |
+| Стили | Tailwind CSS 4 (`@tailwindcss/vite`), семантические CSS-токены, тёмная тема |
+| Backend | Supabase (Auth, PostgreSQL, Storage, Edge Functions) — подключается на этапе 1 |
+| Деплой | GitHub Actions → GitHub Pages (`.github/workflows/deploy.yml`) |
+
+## Быстрый старт
+
+Требуется Node.js 22 LTS (в CI используется 22). На Node 21 проект тоже собирается,
+потому что Vite зафиксирован на 5.x, но 21 — EOL: обновите Node перед переходом на Vite 6+.
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
-В Windows PowerShell скопируйте файл так:
+Откройте `http://localhost:5173`.
 
-```powershell
-Copy-Item .env.example .env.local
+```bash
+npm run build      # vue-tsc + production-сборка в dist/
+npm run preview    # локальный просмотр собранной версии
+npm run typecheck  # только проверка типов
 ```
 
-Откройте адрес из консоли (обычно http://localhost:5173).
+## Демо-режим
 
-Без настроенного Supabase можно просмотреть главную страницу, но вход и личный кабинет будут недоступны.
+Пока `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY` не заданы, приложение работает
+на локальном демо-каталоге (`src/data/catalog.ts`): доступны все страницы и
+переключатель роли «студент / преподаватель / администратор» в шапке.
 
-## 2. Подключение Supabase
+Чтобы подключить Supabase, скопируйте `.env.example` в `.env` и заполните
+публичные значения из Project Settings → API. `service_role` key в клиент не добавляется.
 
-1. Создайте проект в https://supabase.com/dashboard.
-2. Откройте **SQL Editor** и выполните `supabase/migrations/001_initial_auth.sql`.
-3. В **Project Settings → API Keys** либо разделе **Connect** скопируйте **Project URL** и **Publishable key**.
-4. Заполните `.env.local` значениями `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`.
-5. В **Authentication → URL Configuration** задайте Site URL для локальной разработки: `http://localhost:5173/`. Добавьте Redirect URLs для вашего GitHub Pages адреса.
-6. В **Authentication → Providers → Email** проверьте настройки регистрации и подтверждения email. При включённом подтверждении студент должен перейти по ссылке из письма до первого входа.
-7. Выполните `npm run dev` и создайте тестового студента.
+## Структура
 
-**ВАЖНО:** Администратор не создаётся публичной регистрацией. После создания своего пользователя откройте **Authentication → Users**, скопируйте его UUID и в SQL Editor выполните:
-
-```sql
-update public.profiles set role = 'admin' where id = 'UUID-ВАШЕГО-ПОЛЬЗОВАТЕЛЯ';
+```text
+src/
+  assets/main.css       дизайн-токены, светлая/тёмная тема, базовые компоненты
+  components/           AppHeader, AppFooter, ModeBadge
+  data/catalog.ts       демо-каталог курсов, блоков и лабораторий
+  lib/supabase.ts       клиент Supabase (null в демо-режиме)
+  router/index.ts       маршруты из ТЗ, guard по авторизации и роли
+  stores/auth.ts        сессия, профиль, роль, демо-режим
+  types/models.ts       Role, LabMode, Course, Lab, Assignment
+  views/                Home, Login, Courses, Course, Lab, Assignment, Profile,
+                        Report, Teacher, Admin, Forbidden, NotFound
+supabase/migrations/    SQL-схема, RLS, функции start_attempt/submit_attempt
+prototype/index.html    прототип трёх режимов (localStorage)
 ```
 
-Для преподавателя вместо `admin` используйте `teacher`. Если аккаунт уже был создан до миграции, добавьте профиль через SQL Editor вручную.
+## Маршруты
 
-## 3. Публикация на GitHub Pages
+`/` · `/login` · `/courses` · `/courses/:id` · `/labs/:id` · `/assignments/:id`
+· `/profile` · `/reports/:id` · `/teacher` · `/admin`.
 
-1. Создайте репозиторий GitHub, перенесите файлы проекта (кроме `.env.local`).
-2. Откройте **Settings → Pages → Build and deployment → GitHub Actions**.
-3. В **Settings → Secrets and variables → Actions → Variables** создайте:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_PUBLISHABLE_KEY`
-4. Отправьте код в ветку `main`. Workflow из `.github/workflows/deploy.yml` установит зависимости, выполнит сборку и публикацию.
-5. В Supabase **Authentication → URL Configuration** добавьте `https://USERNAME.github.io/REPOSITORY/` в разрешённые Redirect URLs и при необходимости настройте Site URL на опубликованный адрес.
+Доступ к `/teacher` — роли `teacher` и `admin`, к `/admin` — только `admin`.
+Проверка роли в интерфейсе служит только удобством: реальные ограничения задают
+RLS-политики Supabase (ТЗ, раздел 2).
 
-Путь `VITE_BASE_PATH` для GitHub Pages workflow задаёт автоматически. Для навигации используется hash-router (`/#/dashboard`), чтобы перезагрузка страницы не возвращала 404.
+## Supabase
 
-**Безопасность:** publishable key предназначен для браузера и не является секретом, но service_role/secret keys НИКОГДА не должны попадать во фронтенд, репозиторий или GitHub Pages. Реальный контроль доступа обеспечивается RLS. Пока разрешено только чтение собственного профиля.
+1. Создайте проект на supabase.com.
+2. Откройте SQL Editor и выполните `supabase/migrations/001_schema_and_rls.sql`.
+3. Назначьте первого администратора вручную:
+   `update profiles set role = 'admin' where id = '<uuid пользователя>';`
+   Через API роль изменить нельзя — это защищено триггером.
+4. Добавьте `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY` в `.env` локально
+   и в GitHub → Settings → Secrets and variables → Actions → Variables.
 
-## 4. Что уже работает
+## Деплой на GitHub Pages
 
-- Публичная главная страница с тремя режимами (пока информационными).
-- Регистрация и вход по email/password через Supabase.
-- Автоматическое создание профиля со статусом `student`.
-- Проверка входа и роли перед переходом на закрытые страницы.
-- Каркас кабинета и раздела преподавателя/администратора.
-- GitHub Actions для сборки GitHub Pages.
+Workflow `.github/workflows/deploy.yml` собирает проект с
+`VITE_BASE=/<имя репозитория>/` и публикует `dist` через Pages.
+В настройках репозитория выберите Source → GitHub Actions.
 
-## 5. Что будет следующим этапом
+Используется hash history (`/#/courses`): GitHub Pages не отдаёт `index.html`
+для вложенных путей без отдельной схемы с `404.html`. Переход на history-режим
+возможен позже вместе с fallback-страницей.
 
-- Таблицы `courses`, `modules`, `laboratories` с RLS и привязкой к преподавателям.
-- Список курсов в админке и формы создания/редактирования.
-- Публикация блоков и назначение группам.
-- Затем универсальный движок трёх лабораторных режимов.
+## Что реализовано в каркасе
 
-Важно: отображаемые в интерфейсе счётчики сейчас равны нулю и являются заглушками. Конструктор и лаборатории ещё не реализованы.
+- Vue 3 + TS + Vite, алиас `@`, строгий режим TypeScript.
+- Дизайн-система: токены, светлая/тёмная тема, адаптив от 360px, доступные подписи и focus-стили.
+- Роутинг по информационной архитектуре ТЗ, guard авторизации и ролей, заголовки страниц.
+- Pinia-store авторизации: Supabase Auth, профиль из `profiles`, демо-режим без бэкенда.
+- Клиент Supabase без секретов; при отсутствии переменных окружения не инициализируется.
+- Каркас страниц: каталог, курс с прогрессом, лаборатория с панелями трёх режимов,
+  задание, кабинет студента, отчёт под печать, кабинет преподавателя, админка,
+  403 и 404.
+- CI-workflow публикации на GitHub Pages.
+
+## Дальше по этапам ТЗ
+
+1. **Основа** — подключить Supabase Auth (приглашения), реальные `profiles`, RLS-тесты.
+2. **Контент** — админка и конструктор на JSON Schema, версии/публикация, импорт/экспорт.
+3. **Движки** — тренажёр (безопасный вычислитель), Monaco + sandboxed iframe, практикум.
+4. **Проверка и отчёты** — попытки, эксперименты, журнал, оценки, PDF.
+5. **Наполнение и пилот** — четыре MVP-лаборатории, тестовые студенты, публикация.
+6. **Передача** — README, миграции, руководства, сценарии восстановления.
+
+## Ограничения текущей версии
+
+- Каталог и задания — демонстрационные, из `src/data/catalog.ts`; Supabase-запросы ещё не подключены.
+- Движки лабораторий не реализованы: на странице лаборатории показаны панели-заглушки.
+- Политики RLS в миграции упрощены: персонал видит весь контент; ограничение
+  «преподаватель видит только свои курсы» нужно добавить отдельной миграцией.
+- Миграция не проверялась на живой базе Supabase.
+- PDF-отчёт реализован как предпросмотр с печатью браузера, серверная генерация — этап 4.

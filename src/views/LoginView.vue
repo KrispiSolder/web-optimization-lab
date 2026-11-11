@@ -1,23 +1,94 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../stores/auth'
-import { isConfigured } from '../lib/supabase'
-const auth = useAuthStore(), router = useRouter(), route = useRoute()
-const mode = ref<'login' | 'register'>('login'), email = ref(''), password = ref(''), fullName = ref(''), error = ref(''), info = ref(''), busy = ref(false)
-async function submit() {
-  error.value = ''; info.value = ''; busy.value = true
-  try {
-    if (mode.value === 'register') {
-      if (fullName.value.trim().length < 2) throw new Error('Укажите имя и фамилию')
-      await auth.signUp(email.value.trim(), password.value, fullName.value.trim())
-      info.value = 'Регистрация отправлена. Проверьте почту для подтверждения, если оно включено в Supabase.'
-    } else {
-      await auth.signIn(email.value.trim(), password.value)
-      const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') && !route.query.redirect.startsWith('//') ? route.query.redirect : '/dashboard'
-      await router.push(redirect)
-    }
-  } catch (e) { error.value = e instanceof Error ? e.message : 'Ошибка авторизации' } finally { busy.value = false }
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const route = useRoute()
+const router = useRouter()
+
+const email = ref('')
+const password = ref('')
+const submitting = ref(false)
+
+async function handleSubmit() {
+  submitting.value = true
+  const success = await auth.signIn(email.value, password.value)
+  submitting.value = false
+  if (success) {
+    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
+    await router.push(redirect ?? { name: 'courses' })
+  }
 }
 </script>
-<template><div class="auth-wrapper"><div class="auth-card"><div class="eyebrow">ЛИЧНЫЙ КАБИНЕТ</div><h1>{{ mode === 'login' ? 'С возвращением' : 'Создать аккаунт' }}</h1><p class="muted">{{ mode === 'login' ? 'Войдите, чтобы продолжить обучение.' : 'Новый аккаунт автоматически получает роль студента.' }}</p><div class="tabs"><button :class="{ active: mode === 'login' }" @click="mode='login';error='';info=''">Вход</button><button :class="{ active: mode === 'register' }" @click="mode='register';error='';info=''">Регистрация</button></div><form @submit.prevent="submit"><label v-if="mode === 'register'">Имя и фамилия<input v-model="fullName" required minlength="2" autocomplete="name" placeholder="Иван Иванов"/></label><label>Электронная почта<input v-model="email" type="email" autocomplete="email" required placeholder="student@example.com"/></label><label>Пароль<input v-model="password" type="password" :autocomplete="mode === 'login' ? 'current-password' : 'new-password'" minlength="6" required placeholder="Не менее 6 символов"/></label><p v-if="error" class="form-error" role="alert">{{ error }}</p><p v-if="info" class="form-success" role="status">{{ info }}</p><button class="btn btn-primary full" :disabled="busy || !isConfigured">{{ busy ? 'Проверяем…' : (mode === 'login' ? 'Войти' : 'Зарегистрироваться') }}</button></form></div></div></template>
+
+<template>
+  <div class="mx-auto grid max-w-4xl gap-6 py-6 lg:grid-cols-[1fr_0.9fr]">
+    <div>
+      <h1 class="text-3xl">Вход в систему</h1>
+      <p class="mt-2 text-sm text-muted">
+        Доступ выдаётся по приглашению или предварительно разрешённой регистрации. Роль назначает
+        администратор — повысить её самостоятельно нельзя.
+      </p>
+
+      <form class="card mt-6 flex flex-col gap-4" @submit.prevent="handleSubmit">
+        <div>
+          <label class="label" for="email">Электронная почта</label>
+          <input
+            id="email"
+            v-model.trim="email"
+            class="field"
+            type="email"
+            autocomplete="email"
+            required
+            placeholder="student@example.ru"
+          />
+        </div>
+        <div>
+          <label class="label" for="password">Пароль</label>
+          <input
+            id="password"
+            v-model="password"
+            class="field"
+            type="password"
+            autocomplete="current-password"
+            required
+            minlength="6"
+          />
+        </div>
+
+        <p v-if="auth.error" class="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn" role="alert">
+          {{ auth.error }}
+        </p>
+
+        <button class="btn btn-primary" type="submit" :disabled="submitting">
+          {{ submitting ? 'Проверяем…' : 'Войти' }}
+        </button>
+
+        <p class="text-xs text-muted">
+          Восстановление доступа и приглашения подключаются на этапе 1 вместе с Supabase Auth.
+        </p>
+      </form>
+    </div>
+
+    <aside class="card h-fit bg-surface-2">
+      <h2 class="text-lg">Демо-режим</h2>
+      <p class="mt-2 text-sm text-muted">
+        Без переменных окружения Supabase приложение работает на локальных данных. Выберите роль,
+        чтобы посмотреть интерфейсы студента, преподавателя и администратора.
+      </p>
+      <div class="mt-4 flex flex-col gap-2">
+        <RouterLink :to="{ name: 'courses' }" class="btn btn-primary">Продолжить как студент</RouterLink>
+        <button type="button" class="btn" @click="auth.setDemoRole('teacher')">
+          Включить роль преподавателя
+        </button>
+        <button type="button" class="btn" @click="auth.setDemoRole('admin')">
+          Включить роль администратора
+        </button>
+      </div>
+      <p class="mt-4 text-xs text-muted">
+        Текущая роль: <strong class="text-ink">{{ auth.role ?? 'гость' }}</strong>
+      </p>
+    </aside>
+  </div>
+</template>

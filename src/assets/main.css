@@ -1,0 +1,149 @@
+@import 'tailwindcss';
+
+/* Семантические токены: светлая тема по умолчанию, тёмная — по системе или data-theme. */
+:root {
+  --bg: #f5f6f3;
+  --surface: #ffffff;
+  --surface-2: #eef1ec;
+  --ink: #16252d;
+  --muted: #5b6b73;
+  --line: #d5dad6;
+  --accent: #0e6b62;
+  --accent-soft: #dff1ee;
+  --accent-ink: #ffffff;
+  --warn: #8a5a00;
+  --warn-soft: #fff1cf;
+  --bad: #a42b2b;
+  --ok: #1d7a3d;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #101a1f;
+    --surface: #18262d;
+    --surface-2: #142027;
+    --ink: #e6eeee;
+    --muted: #9fb0b6;
+    --line: #2c3d45;
+    --accent: #4fc3b4;
+    --accent-soft: #173a38;
+    --accent-ink: #0b1518;
+    --warn: #f0c05a;
+    --warn-soft: #3a2f12;
+    --bad: #f08a8a;
+    --ok: #6fd08c;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #101a1f;
+  --surface: #18262d;
+  --surface-2: #142027;
+  --ink: #e6eeee;
+  --muted: #9fb0b6;
+  --line: #2c3d45;
+  --accent: #4fc3b4;
+  --accent-soft: #173a38;
+  --accent-ink: #0b1518;
+  --warn: #f0c05a;
+  --warn-soft: #3a2f12;
+  --bad: #f08a8a;
+  --ok: #6fd08c;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-ok: var(--ok);
+
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-serif: Georgia, 'Times New Roman', serif;
+  --font-mono: ui-monospace, Consolas, 'Courier New', monospace;
+}
+
+@layer base {
+  html {
+    scroll-padding-top: 1rem;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-serif);
+    line-height: 1.2;
+    font-weight: 700;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-lg border border-line bg-surface p-5;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-md border border-line bg-surface px-4 py-2 text-sm font-medium text-ink transition-colors;
+  }
+
+  .btn:hover {
+    border-color: var(--accent);
+  }
+
+  .btn-primary {
+    @apply border-accent bg-accent text-accent-ink;
+  }
+
+  .btn-primary:hover {
+    filter: brightness(1.08);
+  }
+
+  .btn:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+
+  .tag {
+    @apply inline-flex items-center rounded-full bg-accent-soft px-2.5 py-0.5 text-xs font-medium text-accent;
+  }
+
+  .tag-warn {
+    @apply inline-flex items-center rounded-full bg-warn-soft px-2.5 py-0.5 text-xs font-medium text-warn;
+  }
+
+  .field {
+    @apply w-full rounded-md border border-line bg-bg px-3 py-2 text-sm text-ink placeholder:text-muted;
+  }
+
+  .label {
+    @apply mb-1 block text-sm font-semibold text-ink;
+  }
+}
