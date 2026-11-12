@@ -68,7 +68,13 @@ const routes: RouteRecordRaw[] = [
     path: '/teacher',
     name: 'teacher',
     component: () => import('@/views/TeacherView.vue'),
-    meta: { title: 'Кабинет преподавателя', requiresAuth: true, roles: ['admin'] },
+    meta: { title: 'Конструктор курсов', requiresAuth: true, roles: ['admin'] },
+  },
+  {
+    path: '/teacher/courses/:id',
+    name: 'course-edit',
+    component: () => import('@/views/CourseEditorView.vue'),
+    meta: { title: 'Редактор курса', requiresAuth: true, roles: ['admin'] },
   },
   {
     path: '/admin',

@@ -16,7 +16,7 @@ const filtered = computed(() => {
   )
 })
 
-function labCount(courseId: string, mode?: 'A' | 'B' | 'C') {
+function labCount(courseId: string, mode?: 'parameter-simulator' | 'code-lab' | 'case-practicum') {
   const course = demoCourses.find((item) => item.id === courseId)
   if (!course) return 0
   const labs = course.modules.flatMap((module) => module.labs)
@@ -60,13 +60,13 @@ function labCount(courseId: string, mode?: 'A' | 'B' | 'C') {
           <span>{{ course.modules.length }} блока</span>
           <span>{{ labCount(course.id) }} лабораторий</span>
           <span class="flex items-center gap-1">
-            <ModeBadge mode="A" /> {{ labCount(course.id, 'A') }}
+            <ModeBadge mode="parameter-simulator" /> {{ labCount(course.id, 'parameter-simulator') }}
           </span>
           <span class="flex items-center gap-1">
-            <ModeBadge mode="B" /> {{ labCount(course.id, 'B') }}
+            <ModeBadge mode="code-lab" /> {{ labCount(course.id, 'code-lab') }}
           </span>
           <span class="flex items-center gap-1">
-            <ModeBadge mode="C" /> {{ labCount(course.id, 'C') }}
+            <ModeBadge mode="case-practicum" /> {{ labCount(course.id, 'case-practicum') }}
           </span>
         </div>
       </RouterLink>

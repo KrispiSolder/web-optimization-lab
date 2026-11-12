@@ -7,7 +7,7 @@ import { findLab } from '@/data/catalog'
 const route = useRoute()
 const found = computed(() => findLab(String(route.params.id)))
 
-const mode = computed(() => found.value?.lab.mode ?? 'A')
+const mode = computed(() => found.value?.lab.mode ?? 'parameter-simulator')
 const activePanel = ref<'work' | 'history'>('work')
 
 const modeNotes: Record<string, string> = {
@@ -84,7 +84,7 @@ const stages = [
 
     <section v-if="activePanel === 'work'" class="flex flex-col gap-4">
       <!-- Режим А -->
-      <div v-if="mode === 'A'" class="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+      <div v-if="mode === 'parameter-simulator'" class="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <form class="card flex flex-col gap-4" @submit.prevent>
           <h2 class="text-lg">Параметры эксперимента</h2>
           <div v-for="field in aFields" :key="field.key">
@@ -127,7 +127,7 @@ const stages = [
       </div>
 
       <!-- Режим Б -->
-      <div v-else-if="mode === 'B'" class="grid gap-4 lg:grid-cols-2">
+      <div v-else-if="mode === 'code-lab'" class="grid gap-4 lg:grid-cols-2">
         <div class="card flex flex-col gap-3">
           <h2 class="text-lg">Исходный код</h2>
           <div

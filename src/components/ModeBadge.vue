@@ -4,9 +4,9 @@ import type { LabMode } from '@/types/models'
 defineProps<{ mode: LabMode }>()
 
 const titles: Record<LabMode, string> = {
-  A: 'Тренажёр',
-  B: 'Реальная лаборатория',
-  C: 'Практикум',
+  'parameter-simulator': 'Тренажёр',
+  'code-lab': 'Реальная лаборатория',
+  'case-practicum': 'Практикум',
 }
 </script>
 

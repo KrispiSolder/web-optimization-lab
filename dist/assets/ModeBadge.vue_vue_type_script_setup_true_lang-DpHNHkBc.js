@@ -1,0 +1,1 @@
+import{a as o,o as s,e as c,t}from"./vendor-BeEuoCt1.js";const n={class:"tag"},p=o({__name:"ModeBadge",props:{mode:{}},setup(e){const a={"parameter-simulator":"Тренажёр","code-lab":"Реальная лаборатория","case-practicum":"Практикум"};return(r,m)=>(s(),c("span",n," Режим "+t(e.mode)+" · "+t(a[e.mode]),1))}});export{p as _};

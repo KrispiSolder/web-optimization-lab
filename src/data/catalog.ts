@@ -22,7 +22,7 @@ export const demoCourses: CourseSummary[] = [
           {
             id: 'lab-meta-seo',
             title: 'Метатеги и внутренний SEO-аудит',
-            mode: 'B',
+            mode: 'code-lab',
             templateKey: 'html-audit',
             description:
               'Реальная лаборатория: исправьте HTML-разметку страницы и пройдите функциональные тесты в песочнице.',
@@ -34,7 +34,7 @@ export const demoCourses: CourseSummary[] = [
           {
             id: 'lab-robots',
             title: 'robots.txt и индексация',
-            mode: 'A',
+            mode: 'parameter-simulator',
             templateKey: 'parameter-simulator',
             description:
               'Тренажёр: настройте директивы robots.txt и проверьте, какие страницы попадут в индекс.',
@@ -53,7 +53,7 @@ export const demoCourses: CourseSummary[] = [
           {
             id: 'lab-images',
             title: 'Оптимизация изображений',
-            mode: 'A',
+            mode: 'parameter-simulator',
             templateKey: 'parameter-simulator',
             description:
               'Тренажёр: подберите формат и качество сжатия, чтобы уложиться в лимит размера файла.',
@@ -65,7 +65,7 @@ export const demoCourses: CourseSummary[] = [
           {
             id: 'lab-cache',
             title: 'Кеш и загрузка ресурсов',
-            mode: 'A',
+            mode: 'parameter-simulator',
             templateKey: 'parameter-simulator',
             description:
               'Тренажёр: настройте заголовки кеширования и приоритеты загрузки ресурсов.',
@@ -84,7 +84,7 @@ export const demoCourses: CourseSummary[] = [
           {
             id: 'lab-funnel',
             title: 'Воронка и конверсия',
-            mode: 'A',
+            mode: 'parameter-simulator',
             templateKey: 'parameter-simulator',
             description:
               'Тренажёр: соберите воронку, настройте цели и оцените влияние изменений на конверсию.',
@@ -103,7 +103,7 @@ export const demoCourses: CourseSummary[] = [
           {
             id: 'lab-shop-audit',
             title: 'Кейс: оптимизация интернет-магазина',
-            mode: 'C',
+            mode: 'case-practicum',
             templateKey: 'case-study',
             description:
               'Практикум: диагностика, гипотеза, эксперимент, сравнение показателей и итоговый отчёт.',
