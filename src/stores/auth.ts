@@ -8,7 +8,7 @@ const DEMO_ROLE_KEY = 'wol.demoRole'
 
 function readDemoRole(): Role {
   const stored = localStorage.getItem(DEMO_ROLE_KEY)
-  return stored === 'teacher' || stored === 'admin' ? stored : 'student'
+  return stored === 'admin' ? 'admin' : 'student'
 }
 
 export const useAuthStore = defineStore('auth', () => {
@@ -30,11 +30,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   const displayName = computed(() => {
     if (isDemo.value) {
-      return demoRole.value === 'student'
-        ? 'Демо-студент'
-        : demoRole.value === 'teacher'
-          ? 'Демо-преподаватель'
-          : 'Демо-администратор'
+      return demoRole.value === 'admin' ? 'Демо-администратор' : 'Демо-студент'
     }
     return profile.value?.display_name ?? user.value?.email ?? 'Пользователь'
   })

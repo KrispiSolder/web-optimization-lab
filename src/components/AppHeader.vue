@@ -10,7 +10,6 @@ const menuOpen = ref(false)
 
 const roleLabel: Record<Role, string> = {
   student: 'Студент',
-  teacher: 'Преподаватель',
   admin: 'Администратор',
 }
 
@@ -19,10 +18,8 @@ const navigation = computed(() => {
     { name: 'courses', label: 'Курсы' },
     { name: 'profile', label: 'Личный кабинет' },
   ]
-  if (auth.role === 'teacher' || auth.role === 'admin') {
-    items.push({ name: 'teacher', label: 'Кабинет преподавателя' })
-  }
   if (auth.role === 'admin') {
+    items.push({ name: 'teacher', label: 'Кабинет преподавателя' })
     items.push({ name: 'admin', label: 'Администрирование' })
   }
   return items
@@ -74,7 +71,6 @@ function handleRoleChange(event: Event) {
             <span class="hidden md:inline">Роль</span>
             <select :value="auth.demoRole" class="field !w-auto !py-1 text-xs" @change="handleRoleChange">
               <option value="student">Студент</option>
-              <option value="teacher">Преподаватель</option>
               <option value="admin">Администратор</option>
             </select>
           </label>

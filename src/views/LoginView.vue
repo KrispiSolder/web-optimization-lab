@@ -79,9 +79,6 @@ async function handleSubmit() {
       </p>
       <div class="mt-4 flex flex-col gap-2">
         <RouterLink :to="{ name: 'courses' }" class="btn btn-primary">Продолжить как студент</RouterLink>
-        <button type="button" class="btn" @click="auth.setDemoRole('teacher')">
-          Включить роль преподавателя
-        </button>
         <button type="button" class="btn" @click="auth.setDemoRole('admin')">
           Включить роль администратора
         </button>

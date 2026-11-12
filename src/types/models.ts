@@ -1,4 +1,4 @@
-export type Role = 'student' | 'teacher' | 'admin'
+export type Role = 'student' | 'admin'
 
 export type LabMode = 'A' | 'B' | 'C'
 

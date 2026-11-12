@@ -36,7 +36,7 @@ npm run typecheck  # только проверка типов
 
 Пока `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY` не заданы, приложение работает
 на локальном демо-каталоге (`src/data/catalog.ts`): доступны все страницы и
-переключатель роли «студент / преподаватель / администратор» в шапке.
+переключатель роли «студент / администратор» в шапке.
 
 Чтобы подключить Supabase, скопируйте `.env.example` в `.env` и заполните
 публичные значения из Project Settings → API. `service_role` key в клиент не добавляется.
@@ -63,19 +63,49 @@ prototype/index.html    прототип трёх режимов (localStorage)
 `/` · `/login` · `/courses` · `/courses/:id` · `/labs/:id` · `/assignments/:id`
 · `/profile` · `/reports/:id` · `/teacher` · `/admin`.
 
-Доступ к `/teacher` — роли `teacher` и `admin`, к `/admin` — только `admin`.
+Доступ к `/teacher` — только администратор, к `/admin` — только администратор.
 Проверка роли в интерфейсе служит только удобством: реальные ограничения задают
 RLS-политики Supabase (ТЗ, раздел 2).
 
 ## Supabase
 
-1. Создайте проект на supabase.com.
-2. Откройте SQL Editor и выполните `supabase/migrations/001_schema_and_rls.sql`.
+1. Создайте проект на supabase.com (PostgreSQL 15+).
+2. Откройте SQL Editor и выполните файл `supabase/migrations/001_schema_and_rls.sql` целиком.
+   Он создаёт схему, индексы, RLS-политики, триггеры профиля и функции
+   `start_attempt` / `submit_attempt`. Файл идемпотентен: повторный запуск не ломает
+   созданные объекты, но не мигрирует уже изменённые таблицы.
 3. Назначьте первого администратора вручную:
-   `update profiles set role = 'admin' where id = '<uuid пользователя>';`
-   Через API роль изменить нельзя — это защищено триггером.
+   `update public.profiles set role = 'admin' where id = '<uuid пользователя>';`
+   Через API роль изменить нельзя — это защищено триггером `protect_profile`.
 4. Добавьте `VITE_SUPABASE_URL` и `VITE_SUPABASE_ANON_KEY` в `.env` локально
    и в GitHub → Settings → Secrets and variables → Actions → Variables.
+
+Что важно знать о схеме:
+
+- Профиль создаётся триггером при регистрации; поле — `display_name`, роль — `role`.
+- `task_private` хранит приватные тесты и эталоны: у студентов нет даже `SELECT`.
+- `submissions` неизменяемы: сдача добавляет ревизию (`revision`), обновлять и удалять
+  снимок может только `service_role`.
+- `attempts` создаются только функцией `start_attempt()`, а не прямым `INSERT`.
+- Прямой `UPDATE` роли или статуса в `profiles` блокируется триггером.
+- Хранилище файлов настраивается отдельно: приватный бакет `lab-assets`,
+  таблица `assets` хранит только метаданные, доступ — по signed URL.
+
+Проверка после применения (SQL Editor):
+
+```sql
+-- RLS включён на всех таблицах
+select relname, relrowsecurity
+from pg_class c join pg_namespace n on n.oid = c.relnamespace
+where n.nspname = 'public' and c.relkind = 'r'
+order by relname;
+
+-- Политики по таблицам
+select schemaname, tablename, policyname, cmd
+from pg_policies where schemaname = 'public'
+order by tablename, policyname;
+```
+
 
 ## Деплой на GitHub Pages
 
@@ -112,7 +142,11 @@ Workflow `.github/workflows/deploy.yml` собирает проект с
 
 - Каталог и задания — демонстрационные, из `src/data/catalog.ts`; Supabase-запросы ещё не подключены.
 - Движки лабораторий не реализованы: на странице лаборатории показаны панели-заглушки.
-- Политики RLS в миграции упрощены: персонал видит весь контент; ограничение
-  «преподаватель видит только свои курсы» нужно добавить отдельной миграцией.
-- Миграция не проверялась на живой базе Supabase.
+- Политики RLS в миграции упрощены: админ видит весь контент; ограничение
+  «инструктор видит только свои курсы» нужно добавить отдельной миграцией на основе `course_staff`.
+- `group_members` изменяет только администратор: сценарий приглашений и самостоятельного
+  вступления в группу требует Edge Function.
+- Миграция не проверялась на живой базе Supabase: синтаксис и RLS нужно прогнать
+  на тестовом проекте до пилота.
+- Бакет `lab-assets` и политики `storage.objects` не входят в миграцию — настраиваются отдельно.
 - PDF-отчёт реализован как предпросмотр с печатью браузера, серверная генерация — этап 4.

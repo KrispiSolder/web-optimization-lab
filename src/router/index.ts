@@ -68,7 +68,7 @@ const routes: RouteRecordRaw[] = [
     path: '/teacher',
     name: 'teacher',
     component: () => import('@/views/TeacherView.vue'),
-    meta: { title: 'Кабинет преподавателя', requiresAuth: true, roles: ['teacher', 'admin'] },
+    meta: { title: 'Кабинет преподавателя', requiresAuth: true, roles: ['admin'] },
   },
   {
     path: '/admin',
