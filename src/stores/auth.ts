@@ -79,6 +79,26 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  function slugifyFio(fio: string): string {
+    const map: Record<string, string> = {
+      а: 'a', б: 'b', в: 'v', г: 'g', д: 'd', е: 'e', ё: 'e', ж: 'zh', з: 'z', и: 'i', й: 'y',
+      к: 'k', л: 'l', м: 'm', н: 'n', о: 'o', п: 'p', р: 'r', с: 's', т: 't', у: 'u', ф: 'f',
+      х: 'h', ц: 'ts', ч: 'ch', ш: 'sh', щ: 'sch', ъ: '', ы: 'y', ь: '', э: 'e', ю: 'yu', я: 'ya',
+    }
+    return fio
+      .toLowerCase()
+      .trim()
+      .split('')
+      .map((c) => map[c] ?? c)
+      .join('')
+      .replace(/[^a-z0-9]+/g, '.')
+      .replace(/^\.+|\.+$/g, '') || 'user'
+  }
+
+  function fioToEmail(fio: string): string {
+    return `${slugifyFio(fio)}@wol.local`
+  }
+
   async function signIn(email: string, password: string) {
     if (!supabase) {
       error.value = 'Supabase не настроен: доступен только демо-режим.'
@@ -90,6 +110,60 @@ export const useAuthStore = defineStore('auth', () => {
     loading.value = false
     if (signInError) {
       error.value = signInError.message
+      return false
+    }
+    return true
+  }
+
+  async function signInOrRegisterByFio(fio: string, password: string) {
+    if (!supabase) {
+      error.value = 'Supabase не настроен: доступен только демо-режим.'
+      return false
+    }
+    if (!fio || !password) {
+      error.value = 'Введите ФИО и пароль'
+      return false
+    }
+
+    const email = fioToEmail(fio)
+    error.value = null
+    loading.value = true
+
+    // 1. Пробуем войти
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    if (!signInError) {
+      loading.value = false
+      return true
+    }
+
+    // 2. Если пользователя нет — регистрируем автоматически
+    const { error: signUpError, data } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { display_name: fio } },
+    })
+
+    if (signUpError) {
+      if (signUpError.message.includes('already registered')) {
+        error.value = 'Пользователь с таким ФИО уже есть, но пароль неверен'
+      } else {
+        error.value = signUpError.message
+      }
+      loading.value = false
+      return false
+    }
+
+    // 3. Обновляем профиль: задаём отображаемое имя
+    const u = data.user
+    if (u) {
+      await supabase.from('profiles').update({ display_name: fio }).eq('id', u.id)
+    }
+
+    // 4. Пробуем войти после регистрации
+    const { error: signInAfterError } = await supabase.auth.signInWithPassword({ email, password })
+    loading.value = false
+    if (signInAfterError) {
+      error.value = 'Аккаунт создан. Подтвердите вход.'
       return false
     }
     return true
@@ -119,6 +193,7 @@ export const useAuthStore = defineStore('auth', () => {
     isAuthenticated,
     init,
     signIn,
+    signInOrRegisterByFio,
     signOut,
     setDemoRole,
   }

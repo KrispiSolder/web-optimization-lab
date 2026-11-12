@@ -7,13 +7,13 @@ const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 
-const email = ref('')
+const fio = ref('')
 const password = ref('')
 const submitting = ref(false)
 
 async function handleSubmit() {
   submitting.value = true
-  const success = await auth.signIn(email.value, password.value)
+  const success = await auth.signInOrRegisterByFio(fio.value, password.value)
   submitting.value = false
   if (success) {
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
@@ -33,15 +33,15 @@ async function handleSubmit() {
 
       <form class="card mt-6 flex flex-col gap-4" @submit.prevent="handleSubmit">
         <div>
-          <label class="label" for="email">Электронная почта</label>
+          <label class="label" for="fio">ФИО</label>
           <input
-            id="email"
-            v-model.trim="email"
+            id="fio"
+            v-model.trim="fio"
             class="field"
-            type="email"
-            autocomplete="email"
+            type="text"
+            autocomplete="name"
             required
-            placeholder="student@example.ru"
+            placeholder="Иванов Иван"
           />
         </div>
         <div>
@@ -66,7 +66,8 @@ async function handleSubmit() {
         </button>
 
         <p class="text-xs text-muted">
-          Восстановление доступа и приглашения подключаются на этапе 1 вместе с Supabase Auth.
+          При первом входе аккаунт создаётся автоматически по вашему ФИО. Почта формируется
+          внутри системы и не требуется вводить отдельно.
         </p>
       </form>
     </div>
