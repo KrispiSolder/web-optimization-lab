@@ -96,7 +96,7 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function fioToEmail(fio: string): string {
-    return `${slugifyFio(fio)}@wol.local`
+    return `${slugifyFio(fio)}@wol.ru`
   }
 
   async function signIn(email: string, password: string) {

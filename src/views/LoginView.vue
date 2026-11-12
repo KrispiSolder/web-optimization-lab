@@ -73,11 +73,7 @@ async function handleSubmit() {
     </div>
 
     <aside class="card h-fit bg-surface-2">
-      <h2 class="text-lg">Демо-режим</h2>
-      <p class="mt-2 text-sm text-muted">
-        Без переменных окружения Supabase приложение работает на локальных данных. Выберите роль,
-        чтобы посмотреть интерфейсы студента, преподавателя и администратора.
-      </p>
+    
       <div class="mt-4 flex flex-col gap-2">
         <RouterLink :to="{ name: 'courses' }" class="btn btn-primary">Продолжить как студент</RouterLink>
         <button type="button" class="btn" @click="auth.setDemoRole('admin')">
