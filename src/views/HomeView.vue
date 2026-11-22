@@ -1,18 +1,16 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import ModeBadge from '@/components/ModeBadge.vue'
-import { demoCourses } from '@/data/catalog'
+import { ref } from 'vue'
+import { fetchCourses, fetchModules, fetchLaboratories, isConfigured } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
+import type { LabMode } from '@/types/models'
+import ModeBadge from '@/components/ModeBadge.vue'
 
 const auth = useAuthStore()
+const configured = isConfigured()
 
-const mvpLabs = computed(() => {
-  const priority = ['lab-meta-seo', 'lab-images', 'lab-robots', 'lab-funnel']
-  return demoCourses
-    .flatMap((course) => course.modules.flatMap((module) => module.labs))
-    .filter((lab) => priority.includes(lab.id))
-    .sort((a, b) => priority.indexOf(a.id) - priority.indexOf(b.id))
-})
+const mvpLabs = ref<Array<{ id: string; title: string; description: string; mode: LabMode; status: string; attempts: number; maxAttempts: number }>>([])
+const loading = ref(false)
+const error = ref<string | null>(null)
 
 const modes = [
   {
@@ -34,6 +32,45 @@ const modes = [
     points: ['этапы кейса', 'авто- и экспертная оценка', 'отчёт по истории'],
   },
 ] as const
+
+async function load() {
+  loading.value = true
+  error.value = null
+  try {
+    const courses = await fetchCourses()
+    const labs: Array<{ id: string; title: string; description: string; mode: LabMode; status: string; attempts: number; maxAttempts: number }> = []
+    for (const course of courses) {
+      const mods = await fetchModules(course.id)
+      for (const m of mods) {
+        const labsOfModule = await fetchLaboratories(m.id)
+        for (const lab of labsOfModule) {
+          labs.push({
+            id: lab.id,
+            title: lab.title,
+            description: lab.description,
+            mode: lab.type as LabMode,
+            status: lab.status,
+            attempts: 0,
+            maxAttempts: 3,
+          })
+        }
+      }
+    }
+    // Priority: show published labs first, limit to 4 for MVP section
+    const priority = ['lab-meta-seo', 'lab-images', 'lab-robots', 'lab-funnel']
+    mvpLabs.value = labs
+      .sort((a, b) => (priority.indexOf(a.id) - priority.indexOf(b.id)))
+      .slice(0, 4)
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Не удалось загрузить лаборатории'
+  } finally {
+    loading.value = false
+  }
+}
+
+if (configured) {
+  void load()
+}
 </script>
 
 <template>
@@ -58,7 +95,7 @@ const modes = [
           <RouterLink v-else :to="{ name: 'profile' }" class="btn">Мои результаты</RouterLink>
         </div>
         <p v-if="auth.isDemo" class="mt-4 rounded-md bg-warn-soft px-3 py-2 text-sm text-warn">
-          Демо-режим: Supabase не подключён, данные каталога локальные. Роль переключается в шапке.
+          Демо-режим: Supabase не подключён, данные загружаются из каталога Supabase после настройки.
         </p>
       </div>
 
@@ -71,7 +108,7 @@ const modes = [
           </div>
           <div>
             <dt class="text-muted">MVP-лаборатории</dt>
-            <dd class="font-serif text-3xl font-bold text-accent">4</dd>
+            <dd class="font-serif text-3xl font-bold text-accent">{{ mvpLabs.length }}</dd>
           </div>
           <div>
             <dt class="text-muted">Роли</dt>
@@ -105,18 +142,18 @@ const modes = [
       </div>
     </section>
 
-    <section>
+    <section v-if="configured">
       <div class="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 class="text-2xl">Стартовые лаборатории MVP</h2>
-          <p class="text-sm text-muted">На этих четырёх сценариях проверяются все три режима и конструктор.</p>
+          <p class="text-sm text-muted">На этих сценариях проверяются все три режима.</p>
         </div>
         <RouterLink :to="{ name: 'courses' }" class="text-sm font-semibold text-accent hover:underline">
           Все курсы →
         </RouterLink>
       </div>
 
-      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+      <div v-if="mvpLabs.length" class="mt-4 grid gap-4 sm:grid-cols-2">
         <RouterLink
           v-for="lab in mvpLabs"
           :key="lab.id"
@@ -134,6 +171,7 @@ const modes = [
           </p>
         </RouterLink>
       </div>
+      <p v-else class="mt-4 text-sm text-muted">Опубликованных лабораторий пока нет.</p>
     </section>
   </div>
 </template>

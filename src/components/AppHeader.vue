@@ -19,7 +19,6 @@ const navigation = computed(() => {
     { name: 'profile', label: 'Личный кабинет' },
   ]
   if (auth.role === 'admin') {
-    items.push({ name: 'teacher', label: 'Кабинет преподавателя' })
     items.push({ name: 'admin', label: 'Администрирование' })
   }
   return items
@@ -31,11 +30,7 @@ async function handleSignOut() {
   await router.push({ name: 'home' })
 }
 
-function handleRoleChange(event: Event) {
-  const value = (event.target as HTMLSelectElement).value as Role
-  auth.setDemoRole(value)
-  void router.push({ name: 'home' })
-}
+
 </script>
 
 <template>
@@ -65,16 +60,6 @@ function handleRoleChange(event: Event) {
 
       <div class="ml-auto flex items-center gap-2">
         <span v-if="auth.isDemo" class="tag-warn hidden sm:inline-flex">демо-режим</span>
-
-        <template v-if="auth.isDemo">
-          <label class="flex items-center gap-1.5 text-xs text-muted">
-            <span class="hidden md:inline">Роль</span>
-            <select :value="auth.demoRole" class="field !w-auto !py-1 text-xs" @change="handleRoleChange">
-              <option value="student">Студент</option>
-              <option value="admin">Администратор</option>
-            </select>
-          </label>
-        </template>
 
         <template v-else-if="auth.isAuthenticated">
           <div class="relative">

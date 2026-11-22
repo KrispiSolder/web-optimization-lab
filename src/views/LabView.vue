@@ -1,25 +1,26 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { fetchCourses, fetchModules, fetchLaboratories, isConfigured } from '@/lib/api'
+import type { Course, Module, Laboratory } from '@/types/models'
 import ModeBadge from '@/components/ModeBadge.vue'
-import { findLab } from '@/data/catalog'
 
 const route = useRoute()
-const found = computed(() => findLab(String(route.params.id)))
+const configured = isConfigured()
+const labId = String(route.params.id)
 
-const mode = computed(() => found.value?.lab.mode ?? 'parameter-simulator')
+const found = ref<{ course: Course; module: Module; lab: Laboratory } | null>(null)
+const loading = ref(false)
+const error = ref<string | null>(null)
+
+const mode = computed(() => found.value?.lab.type ?? 'parameter-simulator')
 const activePanel = ref<'work' | 'history'>('work')
 
 const modeNotes: Record<string, string> = {
-  A: 'Параметры формы меняют расчётные метрики. Движок моделей подключается на этапе 3.',
-  B: 'Редактор Monaco, предпросмотр в sandboxed iframe и функциональные тесты подключаются на этапе 3.',
-  C: 'Этапы кейса, промежуточные эксперименты и итоговый отчёт подключаются на этапе 3.',
+  'parameter-simulator': 'Параметры формы меняют расчётные метрики. Движок моделей подключается на этапе 3.',
+  'code-lab': 'Редактор Monaco, предпросмотр в sandboxed iframe и функциональные тесты подключаются на этапе 3.',
+  'case-practicum': 'Этапы кейса, промежуточные эксперименты и итоговый отчёт подключаются на этапе 3.',
 }
-
-const aFields = [
-  { key: 'format', label: 'Формат', type: 'select', options: ['jpeg', 'webp', 'avif'] },
-  { key: 'quality', label: 'Качество, %', type: 'range', min: 30, max: 100 },
-]
 
 const tabs = [
   { id: 'work', label: 'Рабочее место' },
@@ -35,10 +36,49 @@ const stages = [
   'Вывод',
   'Сдача',
 ]
+
+async function load() {
+  loading.value = true
+  error.value = null
+  try {
+    const courses = await fetchCourses()
+
+    for (const course of courses) {
+      const modules = await fetchModules(course.id)
+      for (const module of modules) {
+        const labs = await fetchLaboratories(module.id)
+        const lab = labs.find((l) => l.id === labId)
+        if (lab) {
+          found.value = { course, module, lab }
+          return
+        }
+      }
+    }
+
+    found.value = null
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Не удалось загрузить лабораторию'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  void load()
+})
 </script>
 
 <template>
-  <div v-if="found" class="flex flex-col gap-6">
+  <div v-if="!configured" class="card">
+    <h2 class="text-lg">Supabase не подключён</h2>
+    <p class="mt-2 text-sm text-muted">
+      Добавьте переменные <code class="font-mono">VITE_SUPABASE_URL</code> и
+      <code class="font-mono">VITE_SUPABASE_ANON_KEY</code> в GitHub → Settings → Secrets and
+      variables → Actions → Variables, затем сделайте деплой.
+    </p>
+  </div>
+
+  <div v-else-if="found" class="flex flex-col gap-6">
     <nav class="text-sm text-muted" aria-label="Хлебные крошки">
       <RouterLink :to="{ name: 'courses' }" class="hover:text-ink">Курсы</RouterLink>
       <span aria-hidden="true"> / </span>
@@ -58,8 +98,7 @@ const stages = [
       <h1 class="text-3xl">{{ found.lab.title }}</h1>
       <p class="max-w-3xl text-sm text-muted">{{ found.lab.description }}</p>
       <p class="text-xs text-muted">
-        Попытки: {{ found.lab.attempts }} из {{ found.lab.maxAttempts }} ·
-        Шаблон: <code class="font-mono">{{ found.lab.templateKey }}</code>
+        Шаблон: <code class="font-mono">{{ found.lab.template_key }}</code>
       </p>
     </header>
 
@@ -87,20 +126,17 @@ const stages = [
       <div v-if="mode === 'parameter-simulator'" class="grid gap-4 lg:grid-cols-[0.9fr_1.1fr]">
         <form class="card flex flex-col gap-4" @submit.prevent>
           <h2 class="text-lg">Параметры эксперимента</h2>
-          <div v-for="field in aFields" :key="field.key">
-            <label class="label" :for="field.key">{{ field.label }}</label>
-            <select v-if="field.type === 'select'" :id="field.key" class="field" disabled>
-              <option v-for="option in field.options" :key="option">{{ option }}</option>
+          <div>
+            <label class="label" for="format">Формат</label>
+            <select id="format" class="field" disabled>
+              <option>jpeg</option>
+              <option>webp</option>
+              <option>avif</option>
             </select>
-            <input
-              v-else
-              :id="field.key"
-              class="w-full accent-[var(--accent)]"
-              type="range"
-              :min="field.min"
-              :max="field.max"
-              disabled
-            />
+          </div>
+          <div>
+            <label class="label" for="quality">Качество, %</label>
+            <input id="quality" class="w-full accent-[var(--accent)]" type="range" min="30" max="100" disabled />
           </div>
           <button class="btn btn-primary" type="button" disabled>Записать запуск</button>
           <p class="text-xs text-muted">
@@ -120,8 +156,7 @@ const stages = [
             показателем, чтобы симулятор не воспринимался как реальное измерение.
           </p>
           <div class="mt-auto rounded-md bg-surface-2 p-3 text-xs text-muted">
-            Движок параметрического тренажёра: этап 3. Логика уже проверена в
-            <code class="font-mono">prototype/index.html</code>.
+            Движок параметрического тренажёра: этап 3.
           </div>
         </div>
       </div>
@@ -130,9 +165,7 @@ const stages = [
       <div v-else-if="mode === 'code-lab'" class="grid gap-4 lg:grid-cols-2">
         <div class="card flex flex-col gap-3">
           <h2 class="text-lg">Исходный код</h2>
-          <div
-            class="grid min-h-64 place-items-center rounded-md border border-line bg-surface-2 font-mono text-xs text-muted"
-          >
+          <div class="grid min-h-64 place-items-center rounded-md border border-line bg-surface-2 font-mono text-xs text-muted">
             Monaco Editor подключается лениво на этапе 3
           </div>
           <div class="flex flex-wrap gap-2">
@@ -143,9 +176,7 @@ const stages = [
 
         <div class="card flex flex-col gap-3">
           <h2 class="text-lg">Предпросмотр</h2>
-          <div
-            class="grid min-h-64 place-items-center rounded-md border border-line bg-surface-2 text-xs text-muted"
-          >
+          <div class="grid min-h-64 place-items-center rounded-md border border-line bg-surface-2 text-xs text-muted">
             <p class="max-w-xs text-center">
               sandboxed iframe с отдельным origin. Токены Supabase и доступ к родительскому DOM
               не передаются.
@@ -210,9 +241,13 @@ const stages = [
     </section>
   </div>
 
-  <div v-else class="card">
+  <div v-else-if="!loading && !error" class="card">
     <h1 class="text-2xl">Лаборатория не найдена</h1>
     <p class="mt-2 text-sm text-muted">Возможно, ссылка устарела или лаборатория архивирована.</p>
     <RouterLink :to="{ name: 'courses' }" class="btn btn-primary mt-4">К каталогу курсов</RouterLink>
   </div>
+
+  <div v-else-if="loading" class="card text-sm text-muted">Загрузка лаборатории…</div>
+
+  <p v-if="error" class="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn" role="alert">{{ error }}</p>
 </template>

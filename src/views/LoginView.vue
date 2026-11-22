@@ -73,15 +73,8 @@ async function handleSubmit() {
     </div>
 
     <aside class="card h-fit bg-surface-2">
-    
-      <div class="mt-4 flex flex-col gap-2">
-        <RouterLink :to="{ name: 'courses' }" class="btn btn-primary">Продолжить как студент</RouterLink>
-        <button type="button" class="btn" @click="auth.setDemoRole('admin')">
-          Включить роль администратора
-        </button>
-      </div>
       <p class="mt-4 text-xs text-muted">
-        Текущая роль: <strong class="text-ink">{{ auth.role ?? 'гость' }}</strong>
+        Роль назначает администратор. При первом входе аккаунт создаётся автоматически по вашему ФИО.
       </p>
     </aside>
   </div>

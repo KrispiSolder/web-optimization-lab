@@ -1,20 +1,63 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { findLab } from '@/data/catalog'
+import { fetchCourses, fetchModules, fetchLaboratories, isConfigured } from '@/lib/api'
 import { useAuthStore } from '@/stores/auth'
+import type { Course, Module, Laboratory } from '@/types/models'
 
 const route = useRoute()
 const auth = useAuthStore()
-const found = computed(() => findLab(String(route.params.id)))
+const configured = isConfigured()
+const labId = String(route.params.id)
+
+const found = ref<{ course: Course; module: Module; lab: Laboratory } | null>(null)
+const loading = ref(false)
+const error = ref<string | null>(null)
 
 function printReport() {
   window.print()
 }
+
+async function load() {
+  loading.value = true
+  error.value = null
+  try {
+    const courses = await fetchCourses()
+    for (const course of courses) {
+      const modules = await fetchModules(course.id)
+      for (const module of modules) {
+        const labs = await fetchLaboratories(module.id)
+        const lab = labs.find((l) => l.id === labId)
+        if (lab) {
+          found.value = { course, module, lab }
+          return
+        }
+      }
+    }
+    found.value = null
+  } catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Не удалось загрузить отчёт'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(() => {
+  void load()
+})
 </script>
 
 <template>
-  <div v-if="found" class="flex flex-col gap-4">
+  <div v-if="!configured" class="card">
+    <h2 class="text-lg">Supabase не подключён</h2>
+    <p class="mt-2 text-sm text-muted">
+      Добавьте переменные <code class="font-mono">VITE_SUPABASE_URL</code> и
+      <code class="font-mono">VITE_SUPABASE_ANON_KEY</code> в GitHub → Settings → Secrets and
+      variables → Actions → Variables, затем сделайте деплой.
+    </p>
+  </div>
+
+  <div v-else-if="found" class="flex flex-col gap-4">
     <div class="flex flex-wrap items-center justify-between gap-3 print:hidden">
       <div>
         <h1 class="text-3xl">Отчёт об эксперименте</h1>
@@ -110,9 +153,13 @@ function printReport() {
     </article>
   </div>
 
-  <div v-else class="card">
+  <div v-else-if="!loading && !error" class="card">
     <h1 class="text-2xl">Отчёт недоступен</h1>
     <p class="mt-2 text-sm text-muted">Сначала выполните лабораторию и отправьте работу.</p>
     <RouterLink :to="{ name: 'courses' }" class="btn btn-primary mt-4">К каталогу курсов</RouterLink>
   </div>
+
+  <div v-else-if="loading" class="card text-sm text-muted">Загрузка отчёта…</div>
+
+  <p v-if="error" class="rounded-md bg-warn-soft px-3 py-2 text-sm text-warn" role="alert">{{ error }}</p>
 </template>

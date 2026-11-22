@@ -214,7 +214,7 @@ onMounted(() => {
 <template>
   <div class="flex flex-col gap-6">
     <nav class="text-sm text-muted" aria-label="Хлебные крошки">
-      <RouterLink :to="{ name: 'teacher' }" class="hover:text-ink">Конструктор</RouterLink>
+      <RouterLink :to="{ name: 'courses' }" class="hover:text-ink">Курсы</RouterLink>
       <span aria-hidden="true"> / </span>
       <span class="text-ink">{{ course?.title }}</span>
     </nav>
@@ -243,7 +243,7 @@ onMounted(() => {
         >
           {{ course?.status === 'published' ? 'В архив' : 'Опубликовать' }}
         </button>
-        <RouterLink :to="{ name: 'teacher' }" class="btn">К списку курсов</RouterLink>
+        <RouterLink :to="{ name: 'courses' }" class="btn">К списку курсов</RouterLink>
       </div>
     </header>
 
